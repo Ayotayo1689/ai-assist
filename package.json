@@ -1,0 +1,17 @@
+{
+  "name": "interview-assistant",
+  "version": "1.0.0",
+  "description": "Real-time AI interview assistant overlay",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "node-audiorecorder": "^3.0.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
+}
