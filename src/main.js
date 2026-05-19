@@ -59,9 +59,15 @@ ipcMain.on('window-close', () => {
 
 ipcMain.on('window-minimize', () => mainWindow.minimize());
 
-ipcMain.on('window-move', (event, { deltaX, deltaY }) => {
-  const [x, y] = mainWindow.getPosition();
-  mainWindow.setPosition(x + deltaX, y + deltaY);
+// Sync: renderer calls this on mousedown to snapshot the starting position
+ipcMain.on('get-window-position', (event) => {
+  event.returnValue = mainWindow.getPosition(); // [x, y]
+});
+
+// Absolute positioning — prevents size drift on DPI-scaled displays
+ipcMain.on('set-window-position', (event, { x, y }) => {
+  const { width, height } = mainWindow.getBounds();
+  mainWindow.setBounds({ x: Math.round(x), y: Math.round(y), width, height });
 });
 
 ipcMain.on('set-opacity', (event, value) => {
@@ -85,30 +91,43 @@ ipcMain.on('clear-conversation', () => {
 ipcMain.handle('ask-ai', async (event, { question }) => {
   if (!client) return { error: 'No API key set. Click ⚿ to add your Anthropic API key.' };
 
-  const systemPrompt = `You are a real-time interview coach. The user is in a live job interview right now and needs you to generate the ideal answer they should say out loud — immediately, naturally, and confidently.
+  const systemPrompt = `You are a real-time interview coach. The user is in a live job interview. They will send you a transcript of what was just said — it may include both their words and the interviewer's words mixed together. Your job is to generate the ideal reply the user should say out loud next.
 
 Rules:
 - Write entirely in first person as if YOU are the candidate speaking
 - Respond with 2-4 natural sentences unless the question clearly demands more detail
 - Sound like a confident, articulate professional — not robotic or over-rehearsed
 - Never add preamble like "Here's what you should say" — write the answer directly
+- If the transcript contains both sides of a conversation, focus on what the interviewer asked or said last
 - If it's small talk or a greeting, give a brief warm human response
-- Draw on the conversation history to stay consistent with previous answers`;
+- Draw on the conversation history to stay consistent`;
 
   conversationHistory.push({ role: 'user', content: question });
   const trimmedHistory = conversationHistory.slice(-20);
 
   try {
-    const response = await client.messages.create({
+    let fullReply = '';
+    const stream = client.messages.stream({
       model: 'claude-sonnet-4-5',
       max_tokens: 1024,
       system: systemPrompt,
       messages: trimmedHistory
     });
 
-    const reply = response.content.map(b => b.text || '').join('');
-    conversationHistory.push({ role: 'assistant', content: reply });
-    return { reply };
+    stream.on('text', (text) => {
+      fullReply += text;
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('ai-chunk', { text });
+      }
+    });
+
+    await stream.finalMessage();
+    conversationHistory.push({ role: 'assistant', content: fullReply });
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('ai-done');
+    }
+    return { ok: true };
   } catch (err) {
     return { error: err.message || 'API error. Check your key and try again.' };
   }
@@ -201,6 +220,14 @@ ipcMain.handle('start-transcription', async (event, { micDevice, systemDevice, m
 });
 
 ipcMain.on('stop-transcription', () => stopTranscription());
+
+ipcMain.on('start-recording', () => {
+  if (transcribeProcess) transcribeProcess.stdin.write('start\n');
+});
+
+ipcMain.on('stop-recording', () => {
+  if (transcribeProcess) transcribeProcess.stdin.write('stop\n');
+});
 
 function stopTranscription() {
   if (transcribeProcess) {
