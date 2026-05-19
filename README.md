@@ -1,27 +1,42 @@
 # Interview Assistant
 
-Real-time AI interview coach. Floats over your screen, hidden from screen sharing, listens to both audio streams, and suggests full answers automatically.
+Real-time AI interview coach. Floats over your screen, hidden from screen sharing, listens to the interviewer's audio, and suggests answers you can say out loud — word by word as they stream in.
 
 ---
 
-## Quick start
+## Requirements
 
-### 1. Install Node dependencies
+- **Node.js** v18 or later
+- **Python** 3.8 or later
+- **VB-Cable** (free virtual audio device — needed to capture the interviewer's voice)
+
+---
+
+## Installation
+
+### 1. Install VB-Cable (one-time, Windows)
+
+Download and install from **vb-audio.com/Cable** — free, takes under a minute. Restart when prompted.
+
+After installing, open your video call app (Zoom, Teams, Google Meet) and go to its audio settings. Set the **Speaker output** to **CABLE Input (VB-Audio Virtual Cable)**. This routes the interviewer's voice into a device the app can record from.
+
+> If you don't change the speaker output in your call app, the app won't hear the interviewer.
+
+### 2. Install Node dependencies
 
 ```bash
-cd interview-assistant
 npm install
 ```
 
-### 2. Install Python dependencies (for audio transcription)
+### 3. Install Python dependencies
 
 ```bash
-pip3 install openai-whisper sounddevice numpy
+pip install faster-whisper sounddevice numpy
 ```
 
-> First run downloads the Whisper model (~74MB for `base.en`). Happens once.
+> The first run downloads the Whisper model (~32MB for `tiny.en`). This happens once and is cached locally.
 
-### 3. Run
+### 4. Run
 
 ```bash
 npm start
@@ -29,37 +44,39 @@ npm start
 
 ---
 
-## Setup flow inside the app
+## App setup flow
 
-**Step 1 — API key**
-Paste your Anthropic API key (`sk-ant-...`). Get one at [console.anthropic.com](https://console.anthropic.com).
+### Step 1 — API key
 
-**Step 2 — Audio devices**
-- Click a device once → assigned to **You** (microphone)
-- Click it again → assigned to **Interviewer** (system audio)
-- Click a third time → deselected
-- Pick a Whisper model (base.en is the sweet spot)
-- Hit **Start listening**
+Paste your Anthropic API key (`sk-ant-...`). Get one free at [console.anthropic.com](https://console.anthropic.com).
 
-**Step 3 — Interview**
-The app listens automatically. When the interviewer speaks, it transcribes and fires the AI. The suggested answer appears instantly — just read it out.
+### Step 2 — Resume (optional)
+
+Upload your resume as a PDF or TXT file. The AI uses it to tailor answers to your actual experience — job titles, skills, past companies. Hit **Skip** if you'd rather skip this.
+
+### Step 3 — Audio device
+
+Select **CABLE Output (VB-Audio Virtual Cable)** from the list — this is the device that captures what the interviewer says through your call app.
+
+Pick a Whisper model (see table below), then hit **Start**.
+
+### Step 4 — Interview
+
+Press **Start Listening** when the interviewer speaks. Press **Stop Listening** when they're done. The app transcribes the audio and sends it to the AI. The suggested answer streams back word by word — just read it out loud.
+
+You can also type manually in the text box and press **Enter** if you don't want to use audio.
 
 ---
 
-## Mac: capturing system audio (interviewer's voice)
+## Whisper models
 
-macOS blocks apps from recording system audio by default. You need a free virtual audio driver:
+| Model | Size | Speed | Best for |
+|---|---|---|---|
+| tiny.en | 32 MB | Fastest (~0.5s) | Most interviews |
+| base.en | 74 MB | Fast (~1–2s) | Better accuracy |
+| small.en | 244 MB | Slower (~3–5s) | Heavy accents |
 
-1. Download **BlackHole 2ch** from [existingSound.github.io/BlackHole](https://existingSound.github.io/BlackHole/)
-2. Install it (takes ~2 minutes, no restart needed)
-3. Go to **System Settings → Sound → Output** and select **BlackHole 2ch**
-4. In the app, BlackHole will appear as an input device — assign it to **Interviewer**
-
-> Your speakers will go silent when BlackHole is the output. To hear audio AND capture it, create a **Multi-Output Device** in Audio MIDI Setup (built into Mac) combining BlackHole + your speakers.
-
-## Windows: system audio
-
-Works natively — look for **Stereo Mix** or **What U Hear** in the device list and assign it to Interviewer. If you don't see it, right-click the speaker icon → Sound settings → Recording tab → right-click in empty space → "Show disabled devices".
+`tiny.en` is the default and works well for clear English speech.
 
 ---
 
@@ -67,41 +84,54 @@ Works natively — look for **Stereo Mix** or **What U Hear** in the device list
 
 | Action | How |
 |---|---|
-| Switch to interviewer mode | `Cmd/Ctrl + 1` |
-| Switch to "you said" mode | `Cmd/Ctrl + 2` |
-| Clear chat | `Cmd/Ctrl + K` |
-| Manual input | Type in the box + Enter |
-| Toggle auto AI responses | ⚡ auto button |
+| Start / stop recording | **Start Listening** button |
+| Send text manually | Type in the box + **Enter** |
+| Clear chat | **Cmd/Ctrl + K** |
 | Adjust transparency | Opacity slider (bottom) |
 | Audio setup | 🎙 button (top right) |
 | Change API key | ⚿ button (top right) |
 
 ---
 
-## Whisper models
-
-| Model | Size | Speed | Accuracy |
-|---|---|---|---|
-| tiny.en | 32MB | Fastest | Good |
-| base.en | 74MB | Fast | Better (recommended) |
-| small.en | 244MB | Slower | Best |
-
----
-
 ## Screen share invisibility
 
-Uses `setContentProtection(true)` — the window is excluded from all screen captures at the OS level.
+The window uses `setContentProtection(true)` — it is excluded from all screen captures at the OS level. Interviewers cannot see it on Zoom, Teams, Google Meet, or any other screen sharing tool.
 
-- **macOS**: Works with all apps (Teams, Meet, Zoom, Loom, screenshots)
-- **Windows 10 (2004+) / Windows 11**: Same via `WDA_EXCLUDEFROMCAPTURE`
+- **Windows 10 (build 2004+) / Windows 11** — excluded via `WDA_EXCLUDEFROMCAPTURE`
+- **macOS** — excluded system-wide
 
-Test it: start a screen share, look at the shared view — the overlay won't appear.
+To verify: start a screen share and check the shared view. The overlay will not appear.
 
 ---
 
-## Tech
+## How it works
 
-- **Electron** — cross-platform desktop shell, always-on-top window
-- **Python + Whisper** — local offline speech transcription (no audio sent to cloud)
-- **sounddevice** — dual audio stream capture (mic + system audio simultaneously)
-- **Anthropic Claude Sonnet** — generates interview answers in real time
+```
+VB-Cable captures interviewer audio
+        ↓
+faster-whisper transcribes locally (no audio sent to cloud)
+        ↓
+Claude Haiku generates a suggested answer
+        ↓
+Answer streams word by word into the overlay
+```
+
+All audio processing happens on your machine. Only the transcript text is sent to Anthropic's API to generate the reply.
+
+---
+
+## Troubleshooting
+
+**"No speech detected" after stopping**
+- Make sure you selected **CABLE Output** (not your microphone) in the device list
+- Make sure your call app's speaker is set to **CABLE Input** in its audio settings
+- Speak clearly for at least 1 second before stopping
+
+**Devices screen shows only microphone devices**
+- VB-Cable is not installed, or you need to hit **Refresh** after installing it
+
+**"Missing dependency" error on startup**
+- Run `pip install faster-whisper sounddevice numpy` and restart the app
+
+**Window not hiding in screen share**
+- Requires Windows 10 build 2004 or later / Windows 11
