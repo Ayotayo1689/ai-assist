@@ -104,6 +104,7 @@ class Recorder:
             with _transcribe_lock:
                 segments, _ = self.model.transcribe(
                     mixed, language='en',
+                    beam_size=1,
                     condition_on_previous_text=False
                 )
             text = ' '.join(s.text for s in segments).strip()

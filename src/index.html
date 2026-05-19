@@ -678,6 +678,41 @@
         color: #5cb85c;
         border-color: rgba(92, 184, 92, 0.25);
       }
+      #resume-drop-zone {
+        border: 1.5px dashed rgba(255,255,255,0.2);
+        border-radius: 10px;
+        padding: 28px 16px;
+        text-align: center;
+        cursor: pointer;
+        margin: 12px 0;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      #resume-drop-zone:hover {
+        border-color: rgba(255,255,255,0.4);
+        background: rgba(255,255,255,0.03);
+      }
+      #resume-drop-zone.uploaded {
+        border-style: solid;
+        border-color: #30D158;
+        background: rgba(48, 209, 88, 0.05);
+      }
+      #resume-drop-icon { font-size: 28px; margin-bottom: 8px; }
+      #resume-drop-label { font-size: 12px; opacity: 0.6; }
+      #resume-filename { font-size: 12px; color: #30D158; margin-top: 6px; font-weight: 500; }
+      #resume-error { font-size: 12px; color: var(--red); margin: 6px 0; }
+      #resume-preview-box {
+        font-size: 10px;
+        line-height: 1.5;
+        opacity: 0.5;
+        max-height: 72px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.04);
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-top: 4px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
     </style>
   </head>
   <body>
@@ -727,18 +762,42 @@
         >
       </div>
 
-      <!-- Screen 2: Device picker -->
+      <!-- Screen 2: Resume upload -->
+      <div id="screen-resume" class="screen">
+        <h2>Your resume</h2>
+        <p>Upload your resume so the AI can give answers tailored to your actual experience. You can skip this.</p>
+
+        <div id="resume-drop-zone" onclick="pickResumeFile()">
+          <div id="resume-drop-icon">📄</div>
+          <div id="resume-drop-label">Click to upload PDF or TXT</div>
+          <div id="resume-filename" style="display:none"></div>
+        </div>
+
+        <div id="resume-error" style="display:none"></div>
+
+        <div id="resume-preview" style="display:none">
+          <span class="field-label">Preview</span>
+          <div id="resume-preview-box"></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="goToDevices()">Skip</button>
+          <button class="btn-primary" style="flex:1" onclick="goToDevices()">Continue →</button>
+        </div>
+      </div>
+
+      <!-- Screen 3: Device picker -->
       <div id="screen-devices" class="screen">
         <h2>Audio setup</h2>
-        <p class="sub">Select the audio device(s) to record from. Pick your mic, or also add Stereo Mix to capture system audio.</p>
+        <p class="sub">Select the device that plays the interviewer's audio — this is usually <b>Stereo Mix</b> or a loopback device, not your microphone.</p>
 
         <span class="section-title">Whisper model</span>
         <div class="model-row">
           <span class="model-label">Accuracy vs speed:</span>
           <select id="model-select" class="model-select">
-            <option value="tiny.en">tiny.en — fastest, ~32MB</option>
-            <option value="base.en" selected>
-              base.en — balanced, ~74MB (recommended)
+            <option value="tiny.en" selected>tiny.en — fastest, ~32MB</option>
+            <option value="base.en">
+              base.en — balanced, ~74MB
             </option>
             <option value="small.en">small.en — more accurate, ~244MB</option>
           </select>
@@ -750,9 +809,9 @@
         <div id="device-list" class="device-list" style="display: none"></div>
 
         <div id="none-note" style="display: none">
-          <b style="color: var(--amber)">No system audio loopback found.</b>
-          To capture the interviewer's voice, enable <b>Stereo Mix</b>:<br>
-          <span style="opacity:0.8">Right-click the speaker in your taskbar → Sound settings → go to the Recording tab → right-click empty space → <b>Show Disabled Devices</b> → right-click Stereo Mix → Enable → hit Refresh above.</span>
+          <b style="color: var(--amber)">No loopback device found.</b>
+          To capture the interviewer's voice you need <b>Stereo Mix</b>:<br>
+          <span style="opacity:0.8">Right-click the speaker icon in your taskbar → Sound settings → Recording tab → right-click empty space → <b>Show Disabled Devices</b> → right-click <b>Stereo Mix</b> → Enable → hit Refresh above.</span>
         </div>
 
         <div class="btn-row">
@@ -760,7 +819,7 @@
             ↺ Refresh
           </button>
           <button class="btn-primary" style="flex: 1" onclick="startSession()">
-            Start listening →
+            Start →
           </button>
         </div>
       </div>

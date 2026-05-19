@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('electron', {
   setApiKey: (key) => ipcRenderer.send('set-api-key', key),
   onApiKeySet: (cb) => ipcRenderer.on('api-key-set', (_, v) => cb(v)),
 
+  // Resume
+  uploadResume: () => ipcRenderer.invoke('upload-resume'),
+
   // AI
   askAI: (payload) => ipcRenderer.invoke('ask-ai', payload),
   clearConversation: () => ipcRenderer.send('clear-conversation'),

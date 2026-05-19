@@ -27,7 +27,34 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 function goToKey()     { showScreen('screen-key'); }
+function goToResume()  { showScreen('screen-resume'); }
 function goToDevices() { showScreen('screen-devices'); loadDevices(); }
+
+async function pickResumeFile() {
+  const result = await window.electron.uploadResume();
+  if (!result || result.canceled) return;
+
+  const errorEl    = document.getElementById('resume-error');
+  const dropZone   = document.getElementById('resume-drop-zone');
+  const filenameEl = document.getElementById('resume-filename');
+  const labelEl    = document.getElementById('resume-drop-label');
+  const previewEl  = document.getElementById('resume-preview');
+  const previewBox = document.getElementById('resume-preview-box');
+
+  if (result.error) {
+    errorEl.textContent  = result.error;
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  errorEl.style.display = 'none';
+  dropZone.classList.add('uploaded');
+  labelEl.textContent          = 'Uploaded successfully';
+  filenameEl.textContent       = result.filename;
+  filenameEl.style.display     = 'block';
+  previewBox.textContent       = result.preview;
+  previewEl.style.display      = 'block';
+}
 
 // ─── API key ──────────────────────────────────────────────────────────────────
 document.getElementById('api-input').addEventListener('keydown', e => {
@@ -44,7 +71,7 @@ function saveKey() {
   window.electron.setApiKey(key);
 }
 window.electron.onApiKeySet((ok) => {
-  if (ok) { showScreen('screen-devices'); loadDevices(); }
+  if (ok) { showScreen('screen-resume'); }
 });
 
 // ─── Device picker ────────────────────────────────────────────────────────────
@@ -150,7 +177,7 @@ function makeDeviceItem(device) {
 async function startSession() {
   if (selectedDevices.length === 0) {
     showScreen('screen-main');
-    addSystemMsg('No audio devices selected — use the text box to type manually.');
+    addSystemMsg('No audio device selected — use the text box to type manually.');
     setStatus('ready', 'ready');
     return;
   }
@@ -159,8 +186,8 @@ async function startSession() {
   addSystemMsg(`Loading Whisper (${model})… first load takes ~10–30 s.`);
   setStatus('loading', 'loading...');
   await window.electron.startTranscription({
-    micDevice:    selectedDevices[0] ?? null,
-    systemDevice: selectedDevices[1] ?? null,
+    micDevice:    null,
+    systemDevice: selectedDevices[0],
     model
   });
 }

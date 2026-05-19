@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, systemPreferences, dialog } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const readline = require('readline');
@@ -9,6 +10,7 @@ let apiKey = '';
 let client = null;
 let conversationHistory = [];
 let transcribeProcess = null;
+let resumeText = '';
 
 // ─── Window ───────────────────────────────────────────────────────────────────
 
@@ -88,8 +90,43 @@ ipcMain.on('clear-conversation', () => {
   conversationHistory = [];
 });
 
+ipcMain.handle('upload-resume', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select your resume',
+    properties: ['openFile'],
+    filters: [{ name: 'Documents', extensions: ['pdf', 'txt'] }]
+  });
+
+  if (canceled || !filePaths.length) return { canceled: true };
+
+  const filePath = filePaths[0];
+  const filename = path.basename(filePath);
+  const ext = path.extname(filePath).toLowerCase();
+
+  try {
+    let text = '';
+    if (ext === '.pdf') {
+      const pdfParse = require('pdf-parse');
+      const buffer = fs.readFileSync(filePath);
+      const data = await pdfParse(buffer);
+      text = data.text;
+    } else {
+      text = fs.readFileSync(filePath, 'utf8');
+    }
+    resumeText = text.trim();
+    const preview = resumeText.substring(0, 300) + (resumeText.length > 300 ? '…' : '');
+    return { ok: true, filename, preview };
+  } catch (err) {
+    return { error: `Could not read file: ${err.message}` };
+  }
+});
+
 ipcMain.handle('ask-ai', async (event, { question }) => {
   if (!client) return { error: 'No API key set. Click ⚿ to add your Anthropic API key.' };
+
+  const resumeSection = resumeText
+    ? `\n\nCANDIDATE RESUME:\n${resumeText}\n\nUse the resume above to give personalized, specific answers that reference the candidate's actual experience, skills, and background.`
+    : '';
 
   const systemPrompt = `You are a real-time interview coach. The user is in a live job interview. They will send you a transcript of what was just said — it may include both their words and the interviewer's words mixed together. Your job is to generate the ideal reply the user should say out loud next.
 
@@ -100,7 +137,7 @@ Rules:
 - Never add preamble like "Here's what you should say" — write the answer directly
 - If the transcript contains both sides of a conversation, focus on what the interviewer asked or said last
 - If it's small talk or a greeting, give a brief warm human response
-- Draw on the conversation history to stay consistent`;
+- Draw on the conversation history to stay consistent${resumeSection}`;
 
   conversationHistory.push({ role: 'user', content: question });
   const trimmedHistory = conversationHistory.slice(-20);
@@ -108,7 +145,7 @@ Rules:
   try {
     let fullReply = '';
     const stream = client.messages.stream({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: systemPrompt,
       messages: trimmedHistory
