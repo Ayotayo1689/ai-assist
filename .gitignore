@@ -17,8 +17,7 @@ __pycache__/
 .Python
 *.egg-info/
 .eggs/
-venv/
-.venv/
+ 
 env/
 
 # Whisper model cache (large, downloaded on first run)
