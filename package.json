@@ -4,8 +4,8 @@
   "description": "Real-time AI interview assistant overlay",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev"
+    "start": "node api.js && electron .",
+    "dev": "node api.js && electron . --dev"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
